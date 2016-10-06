@@ -14,7 +14,9 @@ ghc-options: #-threaded -rtsopts -with-rtsopts=-N
 
 default-extensions:
   - NoImplicitPrelude
-  - OverloadedRecordFields
+  - DuplicateRecordFields
+  - OverloadedStrings
+  - RecordWildCards
 
 dependencies:
   - base
