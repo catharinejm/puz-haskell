@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import Puz
 
 main :: IO ()
 main = someFunc
