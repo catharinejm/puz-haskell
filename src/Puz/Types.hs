@@ -48,7 +48,7 @@ instance Binary PuzBinary where
     scrambledTag <- getWord16le
     puzzleSolution <- getBoard (fromIntegral width) (fromIntegral height)
     board <- getBoard (fromIntegral width) (fromIntegral height)
-    clueTexts <- getClues []
+    (title : author : copyright : clueTexts) <- getClues []
     let clues = map (\(t, i) -> Clue i t) (clueTexts `zip` [1..])
     return $ PuzBinary { checksum = checksum
                        , magic = magic
