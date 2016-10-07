@@ -111,10 +111,15 @@ instance Binary ClueText where
   get = doGet [] >>= return . ClueText
     where
       doGet s = do
-        c <- getWord8
-        if c == 0
-          then return $ map (chr . fromIntegral) (reverse s)
-          else doGet (c : s)
+        empty <- isEmpty
+        if empty
+          then finish
+          else do c <- getWord8
+                  if c == 0
+                    then finish
+                    else doGet (c : s)
+        where
+          finish = return $ map (chr . fromIntegral) (reverse s)
 
   put (ClueText txt) = putByteString (BS.pack txt) >> putWord8 0
         
