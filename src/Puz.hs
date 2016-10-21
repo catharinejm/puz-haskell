@@ -3,16 +3,16 @@ module Puz
     , module Puz
     ) where
 
-import qualified Data.Binary as B
-import qualified Data.Binary.Get as B
-import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString as BS
 import           Puz.Prelude
+import           Puz.Reader
 import           Puz.Types
-import           System.IO
 
 someFunc :: IO ()
 someFunc = do
-  puzFile <- openFile "resources/avxword20151231.puz" ReadMode
-  rawPuz <- BSL.hGetContents puzFile
-  let puz = B.runGet B.get rawPuz :: PuzBinary
-  print puz
+  (puz @ PuzResult{..}, bs) <- readPuz "resources/avxword20151231.puz"
+  let slice = byteSlice 0x2C 8 bs
+      ck = checksumRegion slice 0
+  putStrLn $ "Bytes   : " ++ (show . BS.unpack $ slice)
+  putStrLn $ "Expected: " ++ show cibChecksum
+  putStrLn $ "Actual  : " ++ show ck

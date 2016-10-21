@@ -9,7 +9,7 @@ import           Data.Vector (Vector)
 import qualified Data.Vector as V
 import           Puz.Prelude hiding (get, put)
 
-data PuzBinary = PuzBinary { checksum :: !Word16
+data PuzResult = PuzResult { checksum :: !Word16
                            , magic :: !ByteString -- 12 Bytes
                            , cibChecksum :: !Word16
                            , maskedLowChecksums :: !Word32
@@ -30,7 +30,7 @@ data PuzBinary = PuzBinary { checksum :: !Word16
                            }
                deriving (Show)
 
-instance Binary PuzBinary where
+instance Binary PuzResult where
   get = do
     checksum <- getWord16le
     magic <- getByteString 12
@@ -50,7 +50,7 @@ instance Binary PuzBinary where
     board <- getBoard (fromIntegral width) (fromIntegral height)
     (title : author : copyright : clueTexts) <- getClues []
     let clues = map (\(t, i) -> Clue i t) (clueTexts `zip` [1..])
-    return $ PuzBinary { checksum = checksum
+    return $ PuzResult { checksum = checksum
                        , magic = magic
                        , cibChecksum = cibChecksum
                        , maskedLowChecksums = maskedLowChecksums
@@ -80,7 +80,7 @@ instance Binary PuzBinary where
                     else getClues (clueText : acc)
       extraHeadings = ["GRBS", "RTBL", "LTIM", "GEXT", "RUSR"]
 
-  put PuzBinary{..} = do
+  put PuzResult{..} = do
     putWord16le checksum
     putByteString magic
     putWord16le cibChecksum
