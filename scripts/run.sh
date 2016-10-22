@@ -12,4 +12,4 @@ echo Done!
 echo ================================================================================
 echo
 
-stack exec puz-exe "$@"
+rlwrap stack exec puz-exe "$@"

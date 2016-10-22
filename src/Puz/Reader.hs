@@ -67,11 +67,6 @@ mkCell '.' = Blocked
 mkCell '-' = Empty
 mkCell c = Filled c
 
-unCell :: Cell -> Char
-unCell Blocked = '.'
-unCell Empty = '-'
-unCell (Filled c) = c
-
 data ClueBuilder = CB { clues :: ![Clue]
                       , clueNum :: !Int
                       , clueTexts :: ![String]
