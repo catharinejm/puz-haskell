@@ -7,18 +7,23 @@ import Puz.Errors
 import Puz.Prelude
 import Puz.Reader
 import Puz.Types
+import Puz.Util
 import Puz.Validator
 
-loadGame :: (MonadIO m, MonadError PuzError m) => FilePath -> m PuzResult
+loadGame :: (MonadIO m, MonadError PuzError m) => FilePath -> m Puzzle
 loadGame puzFile = do
   (puz, bs) <- readPuz puzFile
   ensureUnscrambled puz
   runChecksums puz bs
-  return puz
+  mkPuzzle puz
 
 playGame :: (MonadIO m) => FilePath -> m ()
 playGame puzFile = do
-  puz <- runExceptT (loadGame puzFile)
-  case puz of
+  res <- runExceptT (loadGame puzFile)
+  case res of
    Left err -> liftIO $ print err
-   Right _ -> liftIO $ putStrLn "Validations passed!"
+   Right puz -> liftIO $ do
+     putStrLn $ unlines [ "Validations passed!"
+                        , ""
+                        , show puz
+                        ]

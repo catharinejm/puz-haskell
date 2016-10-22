@@ -4,10 +4,8 @@ import           Data.Binary
 import           Data.Binary.Get
 import           Data.Binary.Put
 import qualified Data.ByteString as BS
-import           Data.ByteString.Char8 (ByteString)
-import qualified Data.ByteString.Char8 as CS
+import           Data.ByteString (ByteString)
 import           Data.Vector (Vector)
-import qualified Data.Vector as V
 import           Puz.Prelude hiding (get, put)
 
 data PuzResult = PuzResult { checksum :: !Word16
@@ -119,61 +117,26 @@ instance Binary PuzResult where
     where
       putClues clues = mapM_ (put . text) clues
 
--- data Puzzle = Puzzle
+data Puzzle = Puzzle { title :: !String
+                     , author :: !String
+                     , copyright :: !String
+                     , notes :: !String
+                     , solution :: !Board
+                     , board :: !Board
+                     , clues :: ![Clue]
+                     }
+            deriving (Show)
 
-data Clue = Clue { number :: !Int, text :: !PuzString }
+data Clue = Clue { number :: !Int, text :: !String }
           deriving (Show)
 
-newtype PuzString = PuzString { unPuzString :: String }
-
-instance Show PuzString where
-  show (PuzString s) = show s
-
-instance Binary PuzString where
-  get = doGet [] >>= return . PuzString
-    where
-      doGet s = do
-        empty <- isEmpty
-        if empty
-          then finish
-          else do c <- getWord8
-                  if c == 0
-                    then finish
-                    else doGet (c : s)
-        where
-          finish = return $ map (chr . fromIntegral) (reverse s)
-
-  put (PuzString txt) = putByteString (CS.pack txt) >> putWord8 0
-        
 data Board = Board { width :: !Int
                    , height :: !Int
                    , rows :: !(Vector (Vector Cell))
                    }
            deriving (Show)
 
-getBoard :: Int -> Int -> Get Board
-getBoard width height = do
-  rowTexts <- replicateM height (getByteString width)
-  let rows = V.fromList $ map (V.fromList . map mkCell . CS.unpack) rowTexts
-  return $ Board width height rows
-
-putBoard :: Board -> Put
-putBoard Board{..} = do
-  mapM_ putRow rows
-  where
-    putRow = mapM_ (putWord8 . fromIntegral . ord . unCell)
-
 data Cell = Blocked
           | Empty
           | Filled !Char
           deriving (Show)
-
-mkCell :: Char -> Cell
-mkCell '.' = Blocked
-mkCell '-' = Empty
-mkCell c = Filled c
-
-unCell :: Cell -> Char
-unCell Blocked = '.'
-unCell Empty = '-'
-unCell (Filled c) = c
