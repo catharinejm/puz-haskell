@@ -4,5 +4,6 @@ module Puz.Prelude
        ) where
 
 import BasePrelude hiding (uncons, index, lazy, shift, transpose,
-                           conjugate, trace, rotate, readFloat, readInt)
+                           conjugate, trace, rotate, readFloat, readInt,
+                           Down)
 import MTLPrelude

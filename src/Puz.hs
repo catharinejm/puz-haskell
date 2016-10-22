@@ -7,7 +7,6 @@ import Puz.Errors
 import Puz.Prelude
 import Puz.Reader
 import Puz.Types
-import Puz.Util
 import Puz.Validator
 
 loadGame :: (MonadIO m, MonadError PuzError m) => FilePath -> m Puzzle

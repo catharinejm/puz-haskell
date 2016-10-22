@@ -25,6 +25,7 @@ dependencies:
   - base-prelude
   - binary
   - bytestring
+  - containers
   - mtl
   - mtl-prelude
   - vector

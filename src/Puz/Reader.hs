@@ -6,6 +6,8 @@ import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as CS
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Map.Strict as M
+import           Data.Vector ((!?))
 import qualified Data.Vector as V
 import           Puz.Errors
 import           Puz.Prelude
@@ -30,19 +32,19 @@ mkPuzzle :: (MonadError PuzError m) => PuzResult -> m Puzzle
 mkPuzzle PuzResult{..} = do
   sln <- brd solution
   bd <- brd board
-  return $ Puzzle { title = str title
-                  , author = str author
-                  , copyright = str copyright
-                  , notes = str notes
+  clues <- mkClues clues bd
+  return $ Puzzle { title = fromCString title
+                  , author = fromCString author
+                  , copyright = fromCString copyright
+                  , notes = fromCString notes
                   , solution = sln
                   , board = bd
-                  , clues = buildClues
+                  , clues = clues
+                  , cluesByNum = M.map head $ toMapBy (\Clue{..} -> (number, direction)) clues
+                  , cluesByCoord = toMapBy coords clues
                   }
   where
-    str = CS.unpack . BS.takeWhile (/= 0)
     brd = mkBoardM (fromIntegral width) (fromIntegral height)
-    buildClues = []
-
 
 mkBoard :: Int -> Int -> ByteString -> Maybe Board
 mkBoard width height bytes =
@@ -69,3 +71,39 @@ unCell :: Cell -> Char
 unCell Blocked = '.'
 unCell Empty = '-'
 unCell (Filled c) = c
+
+data ClueBuilder = CB { clues :: ![Clue]
+                      , clueNum :: !Int
+                      , clueTexts :: ![String]
+                      }
+
+newCB :: [String] -> ClueBuilder
+newCB = CB [] 1
+
+mkClues :: (MonadError PuzError m) => [ByteString] -> Board -> m [Clue]
+mkClues texts Board{..} = let CB{..} = buildClues
+                          in return clues
+  where
+    cellAt x y = rows !? y >>= (!? x)
+    isBlack x y = maybe True (== Blocked) (cellAt x y)
+    isWhite = curry (not . uncurry isBlack)
+    needsAcrossNum x y = isWhite x y && isBlack (x-1) y && isWhite (x+1) y
+    needsDownNum x y = isWhite x y && isBlack x (y-1) && isWhite x (y+1)
+    buildClues = flip execState (newCB $ map fromCString texts) $ do
+      mapM_ buildClue [ (x, y) | y <- [0..height-1], x <- [0..width-1] ]
+    buildClue coords@(x, y) = do
+      let needsAx = needsAcrossNum x y
+          needsDn = needsDownNum x y
+      when needsAx addAx
+      when needsDn addDn
+      when (needsAx || needsDn) increment
+      where
+        setClue dir cb@CB{clueTexts=(c:cs), ..} =
+          let clue = Clue clueNum dir coords c
+          in cb { clues = clue : clues
+                , clueTexts = cs
+                }
+        addAx = modify (setClue Across)
+        addDn = modify (setClue Down)
+        increment = modify (\cb@CB{clueNum} -> cb { clueNum = clueNum + 1 })
+      

@@ -6,6 +6,7 @@ import           Data.Binary.Put
 import qualified Data.ByteString as BS
 import           Data.ByteString (ByteString)
 import           Data.Vector (Vector)
+import           Data.Map.Strict (Map)
 import           Puz.Prelude hiding (get, put)
 
 data PuzResult = PuzResult { checksum :: !Word16
@@ -117,6 +118,9 @@ instance Binary PuzResult where
     where
       putClues clues = mapM_ (put . text) clues
 
+type CluesByNum = Map (Int, Direction) Clue
+type CluesByCoord = Map (Int, Int) [Clue]
+
 data Puzzle = Puzzle { title :: !String
                      , author :: !String
                      , copyright :: !String
@@ -124,11 +128,19 @@ data Puzzle = Puzzle { title :: !String
                      , solution :: !Board
                      , board :: !Board
                      , clues :: ![Clue]
+                     , cluesByNum :: !CluesByNum
+                     , cluesByCoord :: !CluesByCoord
                      }
             deriving (Show)
 
-data Clue = Clue { number :: !Int, text :: !String }
+data Clue = Clue { number :: !Int
+                 , direction :: !Direction
+                 , coords :: !(Int, Int)
+                 , text :: !String
+                 }
           deriving (Show)
+
+data Direction = Across | Down deriving (Show, Eq, Ord)
 
 data Board = Board { width :: !Int
                    , height :: !Int
@@ -139,4 +151,4 @@ data Board = Board { width :: !Int
 data Cell = Blocked
           | Empty
           | Filled !Char
-          deriving (Show)
+          deriving (Show, Eq)
