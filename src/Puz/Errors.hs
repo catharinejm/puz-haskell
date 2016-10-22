@@ -5,7 +5,7 @@ import Puz.Prelude
 newtype PuzError = PuzError String
 
 instance Show PuzError where
-  show (PuzError err) = "ERROR: " ++ show err
+  show (PuzError err) = "ERROR: " ++ err
 
 expectedActual :: (Show a, Show b) => a -> b -> String
 expectedActual expected actual = "Expected: " ++ show expected ++ ", Got: " ++ show actual
