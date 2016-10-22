@@ -8,9 +8,9 @@ import           Puz.Prelude
 import           Puz.Reader
 import           Puz.Types
 
-someFunc :: IO ()
-someFunc = do
-  (puz @ PuzResult{..}, bs) <- readPuz "resources/avxword20151231.puz"
+playGame :: FilePath -> IO ()
+playGame puzFile = do
+  (puz @ PuzResult{..}, bs) <- readPuz puzFile
   let slice = byteSlice 0x2C 8 bs
       ck = checksumRegion slice 0
   putStrLn $ "Bytes   : " ++ (show . BS.unpack $ slice)

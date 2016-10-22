@@ -168,7 +168,8 @@ unsigned short cksum_region(unsigned char *base, int len, unsigned short cksum) 
     if (cksum & 0x0001)
       cksum = (cksum >> 1) + 0x8000;
     else
-      cksum = cksum >> 1; cksum += *(base+i);
+      cksum = cksum >> 1;
+    cksum += *(base+i);
   }
 
   return cksum;

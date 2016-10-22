@@ -49,7 +49,7 @@ instance Binary PuzResult where
     puzzleSolution <- getBoard (fromIntegral width) (fromIntegral height)
     board <- getBoard (fromIntegral width) (fromIntegral height)
     (title : author : copyright : clueTexts) <- getClues []
-    let clues = map (\(t, i) -> Clue i t) (clueTexts `zip` [1..])
+    let clues = map (uncurry Clue) ([1..] `zip` clueTexts )
     return $ PuzResult { checksum = checksum
                        , magic = magic
                        , cibChecksum = cibChecksum

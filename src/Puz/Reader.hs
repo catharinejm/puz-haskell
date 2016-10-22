@@ -19,9 +19,10 @@ readPuz fileName = do
 checksumRegion :: ByteString -> Word16 -> Word16
 checksumRegion bytes ckInit = BS.foldl doChecksum ckInit bytes
   where
-    doChecksum cksum byte = if cksum .&. 0x0001 /= 0
-                            then cksum `shiftR` 1 + 0x8000
-                            else cksum `shiftR` 1 + fromIntegral byte
+    doChecksum cksum byte = let ck' = if odd cksum
+                                      then cksum `rotateR` 1
+                                      else cksum `shiftR` 1
+                            in ck' + fromIntegral byte
 
 byteSlice :: Int -> Int -> ByteString -> ByteString
 byteSlice start len = BS.take len . BS.drop start
