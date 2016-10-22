@@ -8,11 +8,10 @@ import           Puz.Prelude
 import           Puz.Reader
 import           Puz.Types
 
-playGame :: FilePath -> IO ()
+playGame :: (MonadIO m) => FilePath -> m ()
 playGame puzFile = do
   (puz @ PuzResult{..}, bs) <- readPuz puzFile
-  let slice = byteSlice 0x2C 8 bs
-      ck = checksumRegion slice 0
-  putStrLn $ "Bytes   : " ++ (show . BS.unpack $ slice)
-  putStrLn $ "Expected: " ++ show cibChecksum
-  putStrLn $ "Actual  : " ++ show ck
+  res <- runExceptT (runChecksums puz bs)
+  case res of
+   Left err -> liftIO $ print err
+   Right _ -> liftIO . putStrLn $ "Checksums passed!"

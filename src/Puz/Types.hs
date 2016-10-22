@@ -3,8 +3,9 @@ module Puz.Types where
 import           Data.Binary
 import           Data.Binary.Get
 import           Data.Binary.Put
+import qualified Data.ByteString as BS
 import           Data.ByteString.Char8 (ByteString)
-import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Char8 as CS
 import           Data.Vector (Vector)
 import qualified Data.Vector as V
 import           Puz.Prelude hiding (get, put)
@@ -23,10 +24,13 @@ data PuzResult = PuzResult { checksum :: !Word16
                            , numClues :: !Word16
                            , unknownBitmask :: !Word16
                            , scrambledTag :: !Word16
-                           , puzzleSolution :: !Board
-                           , board :: !Board
-                           , clues :: ![Clue]
-                             -- Extra stuff, coming later...
+                           , puzzleSolution :: !ByteString
+                           , board :: !ByteString
+                           , title :: !ByteString
+                           , author :: !ByteString
+                           , copyright :: !ByteString
+                           , clues :: ![ByteString]
+                           , extraSections :: ![ByteString]
                            }
                deriving (Show)
 
@@ -46,10 +50,13 @@ instance Binary PuzResult where
     numClues <- getWord16le
     unknownBitmask <- getWord16le
     scrambledTag <- getWord16le
-    puzzleSolution <- getBoard (fromIntegral width) (fromIntegral height)
-    board <- getBoard (fromIntegral width) (fromIntegral height)
-    (title : author : copyright : clueTexts) <- getClues []
-    let clues = map (uncurry Clue) ([1..] `zip` clueTexts )
+    puzzleSolution <- getByteString (fromIntegral width * fromIntegral height)
+    board <- getByteString (fromIntegral width * fromIntegral height)
+    title <- getString
+    author <- getString
+    copyright <- getString
+    clueTexts <- replicateM (fromIntegral numClues) getString
+    extraSections <- getExtraSections []
     return $ PuzResult { checksum = checksum
                        , magic = magic
                        , cibChecksum = cibChecksum
@@ -66,19 +73,26 @@ instance Binary PuzResult where
                        , scrambledTag = scrambledTag
                        , puzzleSolution = puzzleSolution
                        , board = board
-                       , clues = clues
+                       , title = title
+                       , author = author
+                       , copyright = copyright
+                       , clues = clueTexts
+                       , extraSections = extraSections
                        }
     where
-      getClues :: [ClueText] -> Get [ClueText]
-      getClues acc = do
+      getString :: Get ByteString
+      getString = getString' []
+      getString' :: [Word8] -> Get ByteString
+      getString' acc = do
+        b <- getWord8
+        if b == 0
+          then return . BS.pack . reverse $ b:acc
+          else getString' (b:acc)
+      getExtraSections acc = do
         empty <- isEmpty
         if empty
-          then return (reverse acc)
-          else do clueText @ (ClueText txt) <- get
-                  if take 4 txt `elem` extraHeadings
-                    then return (reverse acc)
-                    else getClues (clueText : acc)
-      extraHeadings = ["GRBS", "RTBL", "LTIM", "GEXT", "RUSR"]
+          then return $ reverse acc
+          else getString >>= getExtraSections . (: acc)
 
   put PuzResult{..} = do
     putWord16le checksum
@@ -95,20 +109,25 @@ instance Binary PuzResult where
     putWord16le numClues
     putWord16le unknownBitmask
     putWord16le scrambledTag
-    putBoard puzzleSolution
-    putBoard board
-    putClues clues
+    putByteString puzzleSolution
+    putByteString board
+    put title
+    put author
+    put copyright
+    mapM_ put clues
     where
       putClues clues = mapM_ (put . text) clues
 
-data Clue = Clue { number :: !Int, text :: !ClueText }
+data Clue = Clue { number :: !Int, text :: !PuzString }
           deriving (Show)
 
-newtype ClueText = ClueText { unClueText :: String }
-                 deriving (Show)
+newtype PuzString = PuzString { unPuzString :: String }
 
-instance Binary ClueText where
-  get = doGet [] >>= return . ClueText
+instance Show PuzString where
+  show (PuzString s) = show s
+
+instance Binary PuzString where
+  get = doGet [] >>= return . PuzString
     where
       doGet s = do
         empty <- isEmpty
@@ -121,7 +140,7 @@ instance Binary ClueText where
         where
           finish = return $ map (chr . fromIntegral) (reverse s)
 
-  put (ClueText txt) = putByteString (BS.pack txt) >> putWord8 0
+  put (PuzString txt) = putByteString (CS.pack txt) >> putWord8 0
         
 data Board = Board { width :: !Int
                    , height :: !Int
@@ -132,7 +151,7 @@ data Board = Board { width :: !Int
 getBoard :: Int -> Int -> Get Board
 getBoard width height = do
   rowTexts <- replicateM height (getByteString width)
-  let rows = V.fromList $ map (V.fromList . map mkCell . BS.unpack) rowTexts
+  let rows = V.fromList $ map (V.fromList . map mkCell . CS.unpack) rowTexts
   return $ Board width height rows
 
 putBoard :: Board -> Put
