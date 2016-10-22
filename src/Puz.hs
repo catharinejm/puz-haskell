@@ -14,4 +14,4 @@ playGame puzFile = do
   res <- runExceptT (runChecksums puz bs)
   case res of
    Left err -> liftIO $ print err
-   Right _ -> liftIO . putStrLn $ "Checksums passed!"
+   Right _ -> liftIO $ putStrLn "Checksums passed!"

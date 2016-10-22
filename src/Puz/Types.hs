@@ -24,12 +24,13 @@ data PuzResult = PuzResult { checksum :: !Word16
                            , numClues :: !Word16
                            , unknownBitmask :: !Word16
                            , scrambledTag :: !Word16
-                           , puzzleSolution :: !ByteString
+                           , solution :: !ByteString
                            , board :: !ByteString
                            , title :: !ByteString
                            , author :: !ByteString
                            , copyright :: !ByteString
                            , clues :: ![ByteString]
+                           , notes :: !ByteString
                            , extraSections :: ![ByteString]
                            }
                deriving (Show)
@@ -50,12 +51,13 @@ instance Binary PuzResult where
     numClues <- getWord16le
     unknownBitmask <- getWord16le
     scrambledTag <- getWord16le
-    puzzleSolution <- getByteString (fromIntegral width * fromIntegral height)
+    solution <- getByteString (fromIntegral width * fromIntegral height)
     board <- getByteString (fromIntegral width * fromIntegral height)
     title <- getString
     author <- getString
     copyright <- getString
-    clueTexts <- replicateM (fromIntegral numClues) getString
+    clueTexts <- replicateM (fromIntegral numClues) (getString >>= return . BS.init)
+    notes <- getString
     extraSections <- getExtraSections []
     return $ PuzResult { checksum = checksum
                        , magic = magic
@@ -71,18 +73,17 @@ instance Binary PuzResult where
                        , numClues = numClues
                        , unknownBitmask = unknownBitmask
                        , scrambledTag = scrambledTag
-                       , puzzleSolution = puzzleSolution
+                       , solution = solution
                        , board = board
                        , title = title
                        , author = author
                        , copyright = copyright
                        , clues = clueTexts
+                       , notes = notes
                        , extraSections = extraSections
                        }
     where
-      getString :: Get ByteString
       getString = getString' []
-      getString' :: [Word8] -> Get ByteString
       getString' acc = do
         b <- getWord8
         if b == 0
@@ -109,7 +110,7 @@ instance Binary PuzResult where
     putWord16le numClues
     putWord16le unknownBitmask
     putWord16le scrambledTag
-    putByteString puzzleSolution
+    putByteString solution
     putByteString board
     put title
     put author
