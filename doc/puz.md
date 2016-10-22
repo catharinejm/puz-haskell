@@ -1,4 +1,4 @@
-puz - FileFormat.wiki
+Taken from: https://code.google.com/archive/p/puz/wikis/FileFormat.wiki
 
 ## Introduction
 
