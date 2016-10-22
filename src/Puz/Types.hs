@@ -119,6 +119,8 @@ instance Binary PuzResult where
     where
       putClues clues = mapM_ (put . text) clues
 
+-- data Puzzle = Puzzle
+
 data Clue = Clue { number :: !Int, text :: !PuzString }
           deriving (Show)
 

@@ -17,6 +17,7 @@ default-extensions:
   - DuplicateRecordFields
   - OverloadedStrings
   - RecordWildCards
+  - NamedFieldPuns
   - FlexibleContexts
 
 dependencies:

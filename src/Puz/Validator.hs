@@ -20,6 +20,10 @@ validateHeader bytes = do
        then return ()
        else throwError $ PuzError $ "Invalid magic: " ++ show magic
 
+ensureUnscrambled :: (MonadError PuzError m) => PuzResult -> m ()
+ensureUnscrambled PuzResult{scrambledTag} =
+  when (scrambledTag /= 0) $ throwError $ PuzError "Scrambled puzzles are not supported!"
+
 checksumRegion :: Word16 -> ByteString -> Word16
 checksumRegion = BS.foldl doChecksum
   where

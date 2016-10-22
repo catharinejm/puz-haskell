@@ -10,7 +10,11 @@ import Puz.Types
 import Puz.Validator
 
 loadGame :: (MonadIO m, MonadError PuzError m) => FilePath -> m PuzResult
-loadGame puzFile = readPuz puzFile >>= \(puz, bs) -> runChecksums puz bs >> return puz
+loadGame puzFile = do
+  (puz, bs) <- readPuz puzFile
+  ensureUnscrambled puz
+  runChecksums puz bs
+  return puz
 
 playGame :: (MonadIO m) => FilePath -> m ()
 playGame puzFile = do
