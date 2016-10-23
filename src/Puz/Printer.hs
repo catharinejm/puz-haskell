@@ -1,8 +1,12 @@
 module Puz.Printer where
 
-import Puz.Prelude
-import Puz.Types
 import qualified Data.Vector as V
+import           Puz.Prelude
+import           Puz.Types
+import           System.Console.ANSI
+
+resetScreen :: IO ()
+resetScreen = clearScreen >> setSGR [Reset] >> setCursorPosition 0 0
 
 printBoard :: Board -> String
 printBoard Board{..} = unlines (printBorder : V.toList (V.map printRow rows))

@@ -23,3 +23,6 @@ fromCString = CS.unpack . BS.takeWhile (/= 0)
 
 toMapBy :: (Ord b) => (a -> b) -> [a] -> Map b [a]
 toMapBy f as = foldl' (\acc a -> M.alter (maybe (Just [a]) (Just . (a:))) (f a) acc) M.empty as
+
+printNotNull :: (MonadState s m, MonadIO m) => (s -> String) -> m ()
+printNotNull = (uncurry when . (not . null &&& liftIO . putStrLn) =<<) . gets
