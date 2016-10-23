@@ -9,7 +9,6 @@ import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Map.Strict as M
 import           Data.Vector ((!?))
 import qualified Data.Vector as V
-import           Puz.Errors
 import           Puz.Prelude
 import           Puz.Types
 import           Puz.Util
@@ -28,21 +27,22 @@ readPuz fileName = do
      | BSL.null rem -> return (puz, BSL.toStrict rawPuz)
      | otherwise -> throwError $ PuzError "Contents remain after parsing file!"
 
-mkPuzzle :: (MonadError PuzError m) => PuzResult -> m Puzzle
+mkPuzzle :: (MonadError PuzError m) => PuzResult -> m (Puzzle, GameState)
 mkPuzzle PuzResult{..} = do
   sln <- brd solution
   bd <- brd board
   clues <- mkClues clues bd
-  return $ Puzzle { title = fromCString title
-                  , author = fromCString author
-                  , copyright = fromCString copyright
-                  , notes = fromCString notes
-                  , solution = sln
-                  , board = bd
-                  , clues = clues
-                  , cluesByNum = M.map head $ toMapBy (\Clue{..} -> (number, direction)) clues
-                  , cluesByCoord = toMapBy coords clues
-                  }
+  let puz = Puzzle { title = fromCString title
+                   , author = fromCString author
+                   , copyright = fromCString copyright
+                   , notes = fromCString notes
+                   , solution = sln
+                   , clues = clues
+                   , cluesByNum = M.map head $ toMapBy (\Clue{..} -> (number, direction)) clues
+                   , cluesByCoord = toMapBy coords clues
+                   }
+      gameState = GameState bd (0, 0) Across
+  return (puz, gameState)
   where
     brd = mkBoardM (fromIntegral width) (fromIntegral height)
 

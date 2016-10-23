@@ -5,6 +5,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as CS
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import           Data.Vector ((!?))
 import           Puz.Prelude
 import           Puz.Types
 
@@ -25,14 +26,17 @@ fromCString = CS.unpack . BS.takeWhile (/= 0)
 toMapBy :: (Ord b) => (a -> b) -> [a] -> Map b [a]
 toMapBy f as = foldl' (\acc a -> M.alter (maybe (Just [a]) (Just . (a:))) (f a) acc) M.empty as
 
-printNotNull :: (MonadState s m, MonadIO m) => (s -> String) -> m ()
-printNotNull = (uncurry when . (not . null &&& liftIO . putStrLn) =<<) . gets
+printNotNull :: (MonadReader r m, MonadIO m) => (r -> String) -> m ()
+printNotNull = (uncurry when . (not . null &&& liftIO . putStrLn) =<<) . asks
 
 pf :: (Puzzle -> a) -> (Puzzle -> a)
 pf = id
 
-getPuz :: (MonadState Puzzle m) => (Puzzle -> a) -> m a
-getPuz = gets
+getCell :: (Int, Int) -> Board -> Maybe Cell
+getCell (x, y) Board{rows} = rows !? y >>= (!? x)
 
-getBoard :: (MonadState Puzzle m) => (Board -> a) -> m a
-getBoard f = getPuz board >>= return . f
+getCellM :: (MonadState GameState m) => (Int, Int) -> m (Maybe Cell)
+getCellM coords = get >>= return . getCell coords . currentBoard
+
+getCurrentCell :: (MonadState GameState m) => m (Maybe Cell)
+getCurrentCell = gets playerPosition >>= getCellM

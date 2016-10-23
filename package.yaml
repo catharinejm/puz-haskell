@@ -14,6 +14,7 @@ ghc-options: -fwarn-unused-imports #-threaded -rtsopts -with-rtsopts=-N
 
 default-extensions:
   - NoImplicitPrelude
+  - ConstraintKinds
   - DuplicateRecordFields
   - OverloadedStrings
   - RecordWildCards

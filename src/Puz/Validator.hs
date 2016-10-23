@@ -27,10 +27,7 @@ ensureUnscrambled PuzResult{scrambledTag} =
 checksumRegion :: Word16 -> ByteString -> Word16
 checksumRegion = BS.foldl doChecksum
   where
-    doChecksum cksum byte = let ck' = if odd cksum
-                                      then cksum `rotateR` 1
-                                      else cksum `shiftR` 1
-                            in ck' + fromIntegral byte
+    doChecksum cksum byte = cksum `rotateR` 1 + fromIntegral byte
 
 runChecksums :: (MonadError PuzError m) => PuzResult -> ByteString -> m ()
 runChecksums PuzResult{..} bytes = do

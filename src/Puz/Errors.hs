@@ -1,12 +1,8 @@
 module Puz.Errors where
 
 import Puz.Prelude
+import Puz.Types
  
-newtype PuzError = PuzError String
-
-instance Show PuzError where
-  show (PuzError err) = "ERROR: " ++ err
-
 expectedActual :: (Show a, Show b) => a -> b -> String
 expectedActual expected actual = "Expected: " ++ show expected ++ ", Got: " ++ show actual
 

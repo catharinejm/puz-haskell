@@ -126,7 +126,6 @@ data Puzzle = Puzzle { title :: !String
                      , copyright :: !String
                      , notes :: !String
                      , solution :: !Board
-                     , board :: !Board
                      , clues :: ![Clue]
                      , cluesByNum :: !CluesByNum
                      , cluesByCoord :: !CluesByCoord
@@ -152,3 +151,21 @@ data Cell = Blocked
           | Empty
           | Filled !Char
           deriving (Show, Eq)
+
+data GameState = GameState { currentBoard :: !Board
+                           , playerPosition :: !(Int, Int)
+                           , playerDirection :: Direction
+                           }
+               deriving (Show)
+
+newtype PuzError = PuzError String
+
+instance Show PuzError where
+  show (PuzError err) = "ERROR: " ++ err
+
+type Game m = ( MonadError PuzError m
+              , MonadState GameState m
+              , MonadReader Puzzle m
+              , MonadWriter () m
+              , MonadIO m
+              )

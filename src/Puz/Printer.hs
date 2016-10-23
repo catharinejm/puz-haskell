@@ -1,12 +1,14 @@
 module Puz.Printer where
 
+import qualified Data.Vector as V
 import           Puz.Prelude hiding (reset)
 import           Puz.Types
 import           Puz.Util
 import           System.Console.ANSI
+import           System.IO
 
 resetScreen :: (MonadIO m) => m ()
-resetScreen = liftIO (clearScreen >> setSGR [Reset] >> setCursorPosition 0 0)
+resetScreen = liftIO (setSGR [Reset] >> setCursorPosition 0 0)
 
 reset :: (MonadIO m) => m ()
 reset = liftIO $ setSGR [Reset]
@@ -20,32 +22,79 @@ setBackground color = liftIO $ setSGR [SetColor Background Dull color]
 setIntensity :: (MonadIO m) => ConsoleIntensity -> m ()
 setIntensity intensity = liftIO $ setSGR [SetConsoleIntensity intensity]
 
-printInverted :: (MonadIO m) => String -> m ()
-printInverted str = liftIO $ do
+printBright :: (MonadIO m) => String -> m ()
+printBright str = liftIO $ do
   setColor Black
   setBackground Cyan
   putStr str
   reset
 
-printBoardBy :: (MonadState Puzzle m, MonadIO m) => (Puzzle -> Board) -> m ()
-printBoardBy f = getPuz f >>= printBoard
+printSolution :: (MonadReader Puzzle m, MonadIO m) => m ()
+printSolution = do
+  Puzzle{solution} <- ask
+  printBoard Nothing solution
 
-printBoard :: (MonadIO m) => Board -> m ()
-printBoard Board{rows, width} = do
+printPlayerBoard :: (MonadState GameState m, MonadIO m) => m ()
+printPlayerBoard = do
+  GameState{playerPosition, currentBoard} <- get
+  printBoard (Just playerPosition) currentBoard
+
+printCurrent :: (MonadIO m) => String -> m ()
+printCurrent str = do
+  setColor Black
+  setBackground Yellow
+  liftIO $ putStr str
+  reset
+
+printFilled :: (MonadIO m) => String -> m ()
+printFilled str = do
+  setBackground White
+  setIntensity BoldIntensity
+  setColor Black
+  liftIO $ putStr str
+  reset
+
+printBoard :: (MonadIO m) => Maybe (Int, Int) -> Board -> m ()
+printBoard mCoords Board{rows, width} = do
   printBorder
-  mapM_ printRow rows
+  mapM_ printRow (V.toList rows `zip` [0..])
   where
-    printBorder = printInverted "+" >> replicateM_ (4*width-1) (printInverted "-") >> printInverted "+" >> endl
-    printRow row = printInverted "|" >> mapM_ printCell row >> endl >> printBorder
-    printCell Blocked = printInverted " " >> prn " " >> printInverted " |"
-    printCell Empty = printInverted "   |"
-    printCell (Filled c) = do
-      setBackground White
-      setIntensity BoldIntensity
-      setColor Black
-      prn [' ', c, ' ']
-      reset
-      printInverted "|"
+    printBorder = printBright "+" >> printDashes >> printBright "+" >> endl
+    printDashes = replicateM_ (4*width-1) (printBright "-")
+    printRow (row, y) = printBright "|" >> mapM_ printCell rowWithCoords >> endl >> printBorder
+      where rowWithCoords = V.toList row `zip` ([0..] `zip` repeat y)
+    printCell (Blocked, _) = printBright " " >> prn " " >> printBright " |"
+    printCell (Empty, coords) = do
+      let p = if isPlayerCoords coords then printCurrent else printBright
+      p "   "
+      printBright "|"
+    printCell (Filled c, coords) = do
+      let p = if isPlayerCoords coords then printCurrent else printFilled
+      p [' ', c, ' ']
+      printBright "|"
+    isPlayerCoords c = maybe False (== c) mCoords
     prn = liftIO . putStr
     endl = liftIO $ putStrLn ""
     prnCol c s = setColor c >> prn s >> reset
+
+terminalPosition :: (Int, Int) -> (Int, Int)
+terminalPosition (x, y) = (1+y*2, x*4) -- (Row, Col)
+
+goToCoords :: (MonadIO m) => (Int, Int) -> m ()
+goToCoords = liftIO . uncurry setCursorPosition . terminalPosition
+
+printLocation :: (Game m) => m ()
+printLocation = do
+  Just cell <- getCurrentCell
+  GameState{playerPosition} <- get
+  goToCoords playerPosition
+  setColor Black
+  setBackground Yellow
+  printCell cell
+  reset
+  liftIO $ hFlush stdout
+  where
+    printCell Empty = liftIO $ putStr " "
+    printCell Blocked = liftIO $ putStr "#"
+    printCell (Filled c) = liftIO $ putStr [c]
+    
