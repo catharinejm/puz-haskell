@@ -35,8 +35,6 @@ runGame = do
     putStrLn ""
   repl
   where
-    pf :: (Puzzle -> a) -> (Puzzle -> a)
-    pf = id
     repl = do
       liftIO $ do
         putStr "> "
@@ -52,17 +50,21 @@ runGame = do
                                     , "  clues - Display the clues"
                                     , "  play - Play the crossword!"
                                     ]
-    dispatch "board" =
-      gets (board :: Puzzle -> Board) >>= liftIO . putStrLn . printBoard
-    dispatch "solution" =
-      gets (solution :: Puzzle -> Board) >>= liftIO . putStrLn . printBoard
+    dispatch "board" = printBoardBy board
+    dispatch "solution" = printBoardBy solution
     dispatch "clues" = do
       clues <- gets (clues :: Puzzle -> [Clue])
       liftIO . putStrLn . unlines $ clueStrs clues
       where
         clueStrs = map cs . sortBy (compare `on` ((,) <$> direction <*> number))
         cs Clue{..} = show number ++ " " ++ show direction ++ ": " ++ text
+    dispatch "play" = startPlaying
     dispatch s = liftIO . putStrLn $ s ++ "?? Wut?"
+
+startPlaying :: (MonadIO m, MonadState Puzzle m) => m ()
+startPlaying = do
+  resetScreen
+  printBoardBy board
 
 playGame :: (MonadIO m) => FilePath -> m ()
 playGame puzFile = do
