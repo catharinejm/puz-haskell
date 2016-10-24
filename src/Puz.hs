@@ -5,14 +5,15 @@ module Puz
     , module Puz
     ) where
 
-import Puz.Prelude
-import Puz.Printer
-import Puz.Reader
-import Puz.Types
-import Puz.Util
-import Puz.Validator
-import System.Console.ANSI
-import System.IO
+import qualified Data.Map.Strict as M
+import           Puz.Prelude
+import           Puz.Printer
+import           Puz.Reader
+import           Puz.Types
+import           Puz.Util
+import           Puz.Validator
+import           System.Console.ANSI
+import           System.IO
 
 loadGame :: (MonadIO m, MonadError PuzError m) => FilePath -> m (Puzzle, GameState)
 loadGame puzFile = do
@@ -61,12 +62,11 @@ runGame = do
     dispatch "play" = startPlaying
     dispatch s = liftIO . putStrLn $ s ++ "?? Wut?"
 
-startPlaying :: (Game m) => m ()
+startPlaying :: forall m. (Game m) => m ()
 startPlaying = do
-  liftIO $ do
-    hSetBuffering stdin NoBuffering
-    hSetEcho stdout False
-    liftIO clearScreen
+  liftIO $ hSetBuffering stdin NoBuffering
+  echoOff
+  liftIO clearScreen
   loop
   where
     loop = do
@@ -76,13 +76,13 @@ startPlaying = do
       liftIO (clearLine >> (putStrLn . map toUpper $ show dir))
       c <- liftIO getChar
       dispatch c
-      -- liftIO $ hFlush stdout
       loop
     dispatch (ctrl -> 'n') = moveDown
     dispatch (ctrl -> 'p') = moveUp
     dispatch (ctrl -> 'b') = moveLeft
     dispatch (ctrl -> 'f') = moveRight
-    dispatch (ctrl -> 'd') = liftIO clearLine >> shutdown
+    dispatch (ctrl -> 'd') = blankCurrentCell
+    dispatch (ctrl -> 'w') = jumpToClue
     dispatch ' ' = toggleDirection
     dispatch c@(isLetter -> True) = fillCurrentCell (Just c)
     dispatch '\DEL' = fillCurrentCell Nothing
@@ -98,7 +98,7 @@ startPlaying = do
           'D' -> moveLeft
           d@(isDigit -> True) -> getNum [d] >>= \n ->
             case n of
-             "3" -> get >>= \GameState{..} -> setCellM playerPosition Empty
+             "3" -> blankCurrentCell
              _ -> return ()
           _ -> return ()
        _ -> return ()
@@ -107,11 +107,31 @@ startPlaying = do
     getNum digits = liftIO getChar >>= \c -> case c of
                                               '~' -> return (reverse digits)
                                               n -> getNum (n:digits)
-    toggleDirection = modify $ \s ->
-      s { playerDirection = case (playerDirection s) of
-                             Across -> Down
-                             Down -> Across
-        }
+    toggleDirection = do
+      GameState{playerDirection} <- get
+      let dir = case playerDirection of
+                 Across -> Down
+                 Down -> Across
+      setDirection dir
+    jumpToClue :: m ()
+    jumpToClue = do
+      showClueNumbers
+      printMessage "[A]cross / [D]own ?"
+      c <- liftIO getChar >>= return . toLower
+      let mdir = case c of
+            'a' -> Just Across
+            'd' -> Just Down
+            _ -> Nothing
+      maybe (return ()) (\d -> printMessage (show d ++ " - Enter number: ")) mdir
+      mnum <- maybe (return Nothing) (\_ -> echoOn >> liftIO getLine >>= \s -> echoOff >> return (readInt s)) mdir
+      mclue <- asks cluesByNum >>= \cs -> return (((,) <$> mnum <*> mdir) >>= (`M.lookup` cs))
+      maybe (printMessage "Invalid number") (\c -> printClue c >> setDirection (direction c) >> setPosition (coords c)) mclue
+
+setDirection :: (Game m) => Direction -> m ()
+setDirection dir = modify $ \s -> s { playerDirection = dir }
+
+setPosition :: (Game m) => (Int, Int) -> m ()
+setPosition pos = modify $ \s -> s { playerPosition = pos }
 
 move :: (Game m) => (Int, Int) -> m ()
 move (dx, dy) = do
@@ -120,7 +140,7 @@ move (dx, dy) = do
   case mcell of
    Nothing -> return ()
    Just Blocked -> move (dx + signum dx, dy + signum dy)
-   Just _ -> modify $ \gs -> gs { playerPosition = (x + dx, y + dy) }
+   Just _ -> setPosition (x + dx, y + dy)
 
 moveDown, moveUp, moveLeft, moveRight :: (Game m) => m ()
 moveDown = printMessage "MOVE DOWN" >> move (0, 1)
@@ -147,6 +167,9 @@ moveBack = backwardVector >>= move
 
 moveForward :: (Game m) => m ()
 moveForward = forwardVector >>= move
+
+blankCurrentCell :: (Game m) => m ()
+blankCurrentCell = get >>= \GameState{..} -> setCellM playerPosition Empty
 
 fillCurrentCell :: (Game m) => Maybe Char -> m ()
 fillCurrentCell mchr = do

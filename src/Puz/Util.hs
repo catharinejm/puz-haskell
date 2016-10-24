@@ -29,6 +29,23 @@ fromCString = CS.unpack . BS.takeWhile (/= 0)
 toMapBy :: (Ord b) => (a -> b) -> [a] -> Map b [a]
 toMapBy f as = foldl' (\acc a -> M.alter (maybe (Just [a]) (Just . (a:))) (f a) acc) M.empty as
 
+readInt :: String -> Maybe Int
+readInt str = case reads str :: [(Int, String)] of
+               [] -> Nothing
+               [(i, _)] -> Just i
+
+maybeBool :: Bool -> Maybe ()
+maybeBool True = Just ()
+maybeBool False = Nothing
+
+safeHead :: [a] -> Maybe a
+safeHead [] = Nothing
+safeHead (x:_) = Just x
+
+safeTail :: [a] -> Maybe [a]
+safeTail [] = Nothing
+safeTail (_:xs) = Just xs
+
 printNotNull :: (MonadReader r m, MonadIO m) => (r -> String) -> m ()
 printNotNull = (uncurry when . (not . null &&& liftIO . putStrLn) =<<) . asks
 

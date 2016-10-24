@@ -1,5 +1,6 @@
 module Puz.Printer where
 
+import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import           Puz.Prelude hiding (reset)
 import           Puz.Types
@@ -29,15 +30,15 @@ printBright str = liftIO $ do
   putStr str
   reset
 
-printSolution :: (MonadReader Puzzle m, MonadIO m) => m ()
+printSolution :: (Game m) => m ()
 printSolution = do
   Puzzle{solution} <- ask
-  printBoard Nothing solution
+  printBoard Nothing False solution
 
-printPlayerBoard :: (MonadState GameState m, MonadIO m) => m ()
+printPlayerBoard :: (Game m) => m ()
 printPlayerBoard = do
   GameState{playerPosition, currentBoard} <- get
-  printBoard (Just playerPosition) currentBoard
+  printBoard (Just playerPosition) False currentBoard
 
 printCurrent :: (MonadIO m) => String -> m ()
 printCurrent str = do
@@ -62,10 +63,10 @@ printWhite str = do
   reset
 
 printMessage :: (MonadIO m) => String -> m ()
-printMessage msg = liftIO (clearLine >> putStrLn msg)
+printMessage msg = liftIO (clearLine >> putStrLn msg >> cursorUp 1)
 
-printBoard :: (MonadIO m) => Maybe (Int, Int) -> Board -> m ()
-printBoard mCoords Board{rows, width} = do
+printBoard :: (MonadReader Puzzle m, MonadIO m) => Maybe (Int, Int) -> Bool -> Board -> m ()
+printBoard mCoords showClues Board{rows, width} = do
   printBorder
   mapM_ printRow (V.toList rows `zip` [0..])
   where
@@ -76,16 +77,29 @@ printBoard mCoords Board{rows, width} = do
     printCell (Blocked, _) = printBright " " >> prn " " >> printBright " |"
     printCell (Empty, coords) = do
       let p = if isPlayerCoords coords then printCurrent else printWhite
-      p "   "
+      printClueOrContent coords p "   "
       printBright "|"
-    printCell (Filled c, coords) = do
+    printCell (Filled ch, coords) = do
       let p = if isPlayerCoords coords then printCurrent else printWhite
-      p [' ', c, ' ']
+      printClueOrContent coords p [' ', ch, ' ']
       printBright "|"
     isPlayerCoords c = maybe False (== c) mCoords
+    printClueOrContent coords pfn content = do
+      clues <- asks cluesByCoord
+      let mclue = maybeBool showClues >> M.lookup coords clues >>= safeHead
+          mcnum = mclue >>= return . take 3 . (++ repeat ' ') . show . number
+          str = fromMaybe content mcnum
+      pfn str
     prn = liftIO . putStr
     endl = liftIO $ putStrLn ""
     prnCol c s = setColor c >> prn s >> reset
+
+showClueNumbers :: (Game m) => m ()
+showClueNumbers = do
+  resetScreen
+  GameState{playerPosition, currentBoard} <- get
+  printBoard (Just playerPosition) True currentBoard
+
 
 terminalPosition :: (Int, Int) -> (Int, Int)
 terminalPosition (x, y) = (1+y*2, x*4) -- (Row, Col)
@@ -107,4 +121,12 @@ printLocation = do
     printCell Empty = liftIO $ putStr " "
     printCell Blocked = liftIO $ putStr "#"
     printCell (Filled c) = liftIO $ putStr [c]
-    
+
+echoOff :: (MonadIO m) => m ()
+echoOff = liftIO $ hSetEcho stdout False
+
+echoOn :: (MonadIO m) => m ()
+echoOn = liftIO $ hSetEcho stdout True
+
+printClue :: (MonadIO m) => Clue -> m ()
+printClue Clue{..} = printMessage $ show number ++ " " ++ show direction ++ ": " ++ text
