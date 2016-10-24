@@ -40,6 +40,8 @@ mkPuzzle PuzResult{..} = do
                    , clues = clues
                    , cluesByNum = M.map head $ toMapBy (\Clue{..} -> (number, direction)) clues
                    , cluesByCoord = toMapBy coords clues
+                   , messageRow = (fromIntegral height * 2 + 2)
+                   , clueRow = (fromIntegral height * 2 + 3)
                    }
       gameState = GameState bd (0, 0) Across
   return (puz, gameState)
@@ -76,14 +78,11 @@ newCB :: [String] -> ClueBuilder
 newCB = CB [] 1
 
 mkClues :: (MonadError PuzError m) => [ByteString] -> Board -> m [Clue]
-mkClues texts Board{..} = let CB{..} = buildClues
+mkClues texts board@Board{..} = let CB{..} = buildClues
                           in return clues
   where
-    cellAt x y = rows !? y >>= (!? x)
-    isBlack x y = maybe True (== Blocked) (cellAt x y)
-    isWhite = curry (not . uncurry isBlack)
-    needsAcrossNum x y = isWhite x y && isBlack (x-1) y && isWhite (x+1) y
-    needsDownNum x y = isWhite x y && isBlack x (y-1) && isWhite x (y+1)
+    needsAcrossNum x y = isWhite (x, y) board && isBlack (x-1, y) board && isWhite (x+1, y) board
+    needsDownNum x y = isWhite (x, y) board && isBlack (x, y-1) board && isWhite (x, y+1) board
     buildClues = flip execState (newCB $ map fromCString texts) $ do
       mapM_ buildClue [ (x, y) | y <- [0..height-1], x <- [0..width-1] ]
     buildClue coords@(x, y) = do

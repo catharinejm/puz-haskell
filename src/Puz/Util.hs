@@ -72,12 +72,30 @@ backVec :: Direction -> (Int, Int)
 backVec Across = (-1, 0)
 backVec Down = (0, -1)
 
+sumCoords :: (Int, Int) -> (Int, Int) -> (Int, Int)
+sumCoords (x, y) (x', y') = (x+x', y+y')
+
+cellAt :: (Int, Int) -> Board -> Maybe Cell
+cellAt (x, y) Board{rows} = rows !? y >>= (!? x)
+
+isBlack :: (Int, Int) -> Board -> Bool
+isBlack pos@(x, y) = maybe True (== Blocked) . cellAt pos
+
+isWhite :: (Int, Int) -> Board -> Bool
+isWhite = curry (not . uncurry isBlack)
+
+startOfWord :: (Int, Int) -> Direction -> Board -> (Int, Int)
+startOfWord pos dir board = st pos (backVec dir)
+  where
+    st p v = if isBlack (sumCoords p v) board
+             then p
+             else st (sumCoords p v) v
+
 getPreviousCoords :: (MonadState GameState m) => m (Int, Int)
 getPreviousCoords = do
   GameState{..} <- get
   return $ findCoords playerPosition (backVec playerDirection) currentBoard
   where
-    sumCoords (x, y) (x', y') = (x+x', y+y')
     findCoords pos vec board =
       case getCell (sumCoords pos vec) board of
        Nothing -> pos

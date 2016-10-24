@@ -40,7 +40,7 @@ runGame = do
       liftIO $ do
         putStr "> "
         hFlush stdout
-      cmd <- liftIO getLine
+      cmd <- liftIO getLine >>= return . map toLower
       if cmd `elem` ["quit", "exit"]
         then return ()
         else dispatch cmd >> repl
@@ -72,8 +72,9 @@ startPlaying = do
     loop = do
       resetScreen
       printPlayerBoard
-      dir <- gets playerDirection
-      liftIO (clearLine >> (putStrLn . map toUpper $ show dir))
+      printDirection
+      printCurrentClue
+      liftIO $ hFlush stdout
       c <- liftIO getChar
       dispatch c
       loop
@@ -183,6 +184,22 @@ fillCurrentCell mchr = do
 
 shutdown :: (MonadIO m) => m ()
 shutdown = liftIO (putStrLn "Good bye!" >> exitSuccess)
+
+printCurrentClue :: forall m. (Game m) => m ()
+printCurrentClue = getCurrentClue >>= maybe (printMessage "No clue found!") printClue
+  where
+    getCurrentClue :: m (Maybe Clue)
+    getCurrentClue = do
+      GameState{..} <- get
+      let cluePos :: (Int, Int)
+          cluePos = startOfWord playerPosition playerDirection currentBoard
+      clues <- asks cluesByCoord >>= return . (M.! cluePos)
+      return $ find ((== playerDirection) . direction) clues
+
+printDirection :: (Game m) => m ()
+printDirection = do
+  dir <- gets playerDirection
+  liftIO (clearLine >> (putStrLn . map toUpper $ show dir))
 
 playGame :: (MonadIO m) => FilePath -> m ()
 playGame puzFile = do

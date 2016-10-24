@@ -62,8 +62,19 @@ printWhite str = do
   liftIO $ putStr str
   reset
 
-printMessage :: (MonadIO m) => String -> m ()
-printMessage msg = liftIO (clearLine >> putStrLn msg >> cursorUp 1)
+printAtRow :: (MonadIO m) => String -> Int -> m ()
+printAtRow msg row = liftIO $ do
+  setCursorPosition row 0
+  clearLine
+  putStr msg
+
+printMessage :: (Game m) => String -> m ()
+printMessage msg = asks messageRow >>= printAtRow msg
+
+printClue :: (Game m) => Clue -> m ()
+printClue Clue{..} = asks clueRow >>= printAtRow clueStr
+  where
+    clueStr = show number ++ " " ++ show direction ++ ": " ++ text
 
 printBoard :: (MonadReader Puzzle m, MonadIO m) => Maybe (Int, Int) -> Bool -> Board -> m ()
 printBoard mCoords showClues Board{rows, width} = do
@@ -74,7 +85,7 @@ printBoard mCoords showClues Board{rows, width} = do
     printDashes = replicateM_ (4*width-1) (printBright "-")
     printRow (row, y) = printBright "|" >> mapM_ printCell rowWithCoords >> endl >> printBorder
       where rowWithCoords = V.toList row `zip` ([0..] `zip` repeat y)
-    printCell (Blocked, _) = printBright " " >> prn " " >> printBright " |"
+    printCell (Blocked, _) = prn "   " >> printBright "|"
     printCell (Empty, coords) = do
       let p = if isPlayerCoords coords then printCurrent else printWhite
       printClueOrContent coords p "   "
@@ -100,33 +111,14 @@ showClueNumbers = do
   GameState{playerPosition, currentBoard} <- get
   printBoard (Just playerPosition) True currentBoard
 
-
 terminalPosition :: (Int, Int) -> (Int, Int)
 terminalPosition (x, y) = (1+y*2, x*4) -- (Row, Col)
 
 goToCoords :: (MonadIO m) => (Int, Int) -> m ()
 goToCoords = liftIO . uncurry setCursorPosition . terminalPosition
 
-printLocation :: (Game m) => m ()
-printLocation = do
-  Just cell <- getCurrentCell
-  GameState{playerPosition} <- get
-  goToCoords playerPosition
-  setColor Black
-  setBackground Yellow
-  printCell cell
-  reset
-  liftIO $ hFlush stdout
-  where
-    printCell Empty = liftIO $ putStr " "
-    printCell Blocked = liftIO $ putStr "#"
-    printCell (Filled c) = liftIO $ putStr [c]
-
 echoOff :: (MonadIO m) => m ()
 echoOff = liftIO $ hSetEcho stdout False
 
 echoOn :: (MonadIO m) => m ()
 echoOn = liftIO $ hSetEcho stdout True
-
-printClue :: (MonadIO m) => Clue -> m ()
-printClue Clue{..} = printMessage $ show number ++ " " ++ show direction ++ ": " ++ text

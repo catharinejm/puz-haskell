@@ -129,6 +129,8 @@ data Puzzle = Puzzle { title :: !String
                      , clues :: ![Clue]
                      , cluesByNum :: !CluesByNum
                      , cluesByCoord :: !CluesByCoord
+                     , messageRow :: !Int
+                     , clueRow :: !Int
                      }
             deriving (Show)
 
