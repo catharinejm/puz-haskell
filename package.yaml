@@ -20,6 +20,7 @@ default-extensions:
   - RecordWildCards
   - NamedFieldPuns
   - FlexibleContexts
+  - ViewPatterns
 
 dependencies:
   - ansi-terminal

@@ -48,11 +48,21 @@ printCurrent str = do
 
 printFilled :: (MonadIO m) => String -> m ()
 printFilled str = do
-  setBackground White
   setIntensity BoldIntensity
-  setColor Black
+  setColor White
   liftIO $ putStr str
   reset
+
+printWhite :: (MonadIO m) => String -> m ()
+printWhite str = do
+  setBackground White
+  setColor Black
+  setIntensity BoldIntensity
+  liftIO $ putStr str
+  reset
+
+printMessage :: (MonadIO m) => String -> m ()
+printMessage msg = liftIO (clearLine >> putStrLn msg)
 
 printBoard :: (MonadIO m) => Maybe (Int, Int) -> Board -> m ()
 printBoard mCoords Board{rows, width} = do
@@ -65,11 +75,11 @@ printBoard mCoords Board{rows, width} = do
       where rowWithCoords = V.toList row `zip` ([0..] `zip` repeat y)
     printCell (Blocked, _) = printBright " " >> prn " " >> printBright " |"
     printCell (Empty, coords) = do
-      let p = if isPlayerCoords coords then printCurrent else printBright
+      let p = if isPlayerCoords coords then printCurrent else printWhite
       p "   "
       printBright "|"
     printCell (Filled c, coords) = do
-      let p = if isPlayerCoords coords then printCurrent else printFilled
+      let p = if isPlayerCoords coords then printCurrent else printWhite
       p [' ', c, ' ']
       printBright "|"
     isPlayerCoords c = maybe False (== c) mCoords
