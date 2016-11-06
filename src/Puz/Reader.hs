@@ -43,7 +43,7 @@ mkPuzzle PuzResult{..} = do
                    , messageRow = (fromIntegral height * 2 + 2)
                    , clueRow = (fromIntegral height * 2 + 3)
                    }
-      gameState = GameState bd (0, 0) Across
+      gameState = GameState bd (0, 0) Across False
   return (puz, gameState)
   where
     brd = mkBoardM (fromIntegral width) (fromIntegral height)

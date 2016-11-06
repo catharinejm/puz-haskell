@@ -157,6 +157,7 @@ data Cell = Blocked
 data GameState = GameState { currentBoard :: !Board
                            , playerPosition :: !(Int, Int)
                            , playerDirection :: Direction
+                           , shouldShowErrors :: !Bool
                            }
                deriving (Show)
 

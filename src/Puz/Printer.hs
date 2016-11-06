@@ -24,11 +24,7 @@ setIntensity :: (MonadIO m) => ConsoleIntensity -> m ()
 setIntensity intensity = liftIO $ setSGR [SetConsoleIntensity intensity]
 
 printBright :: (MonadIO m) => String -> m ()
-printBright str = liftIO $ do
-  setColor Black
-  setBackground Cyan
-  putStr str
-  reset
+printBright = printColor colorOpts{foregroundColor=Black,backgroundColor=Cyan}
 
 printSolution :: (Game m) => m ()
 printSolution = do
@@ -41,25 +37,36 @@ printPlayerBoard = do
   printBoard (Just playerPosition) False currentBoard
 
 printCurrent :: (MonadIO m) => String -> m ()
-printCurrent str = do
-  setColor Black
-  setBackground Yellow
-  liftIO $ putStr str
-  reset
+printCurrent = printColor colorOpts{backgroundColor=Yellow,foregroundColor=Black}
 
 printFilled :: (MonadIO m) => String -> m ()
-printFilled str = do
-  setIntensity BoldIntensity
-  setColor White
-  liftIO $ putStr str
-  reset
+printFilled = printColor colorOpts{consoleIntensity=BoldIntensity}
 
 printWhite :: (MonadIO m) => String -> m ()
-printWhite str = do
-  setBackground White
-  setColor Black
-  setIntensity BoldIntensity
-  liftIO $ putStr str
+printWhite = printColor colorOpts{foregroundColor=Black,backgroundColor=White,consoleIntensity=BoldIntensity}
+
+data ColorOpts = ColorOpts { foregroundColor :: !Color
+                           , backgroundColor :: !Color
+                           , colorIntensity :: !ColorIntensity
+                           , consoleIntensity :: !ConsoleIntensity
+                           }
+               deriving (Show)
+
+colorOpts :: ColorOpts
+colorOpts = ColorOpts { foregroundColor = White
+                      , backgroundColor = Black
+                      , colorIntensity = Dull
+                      , consoleIntensity = NormalIntensity
+                      }
+
+printColor :: (MonadIO m) => ColorOpts -> String -> m ()
+printColor ColorOpts{..} str = do
+  liftIO $ do
+    setSGR [ SetColor Foreground colorIntensity foregroundColor
+           , SetColor Background colorIntensity backgroundColor
+           , SetConsoleIntensity consoleIntensity
+           ]
+    putStr str
   reset
 
 printAtRow :: (MonadIO m) => String -> Int -> m ()
@@ -77,7 +84,7 @@ printClue Clue{..} = asks clueRow >>= printAtRow clueStr
   where
     clueStr = show number ++ " " ++ show direction ++ ": " ++ text
 
-printBoard :: (MonadReader Puzzle m, MonadIO m) => Maybe (Int, Int) -> Bool -> Board -> m ()
+printBoard :: (Game m) => Maybe (Int, Int) -> Bool -> Board -> m ()
 printBoard mCoords showClues Board{rows, width} = do
   printBorder
   mapM_ printRow (V.toList rows `zip` [0..])
