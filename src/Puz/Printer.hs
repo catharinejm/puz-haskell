@@ -67,6 +67,7 @@ printAtRow msg row = liftIO $ do
   setCursorPosition row 0
   clearLine
   putStr msg
+  liftIO $ hFlush stdout
 
 printMessage :: (Game m) => String -> m ()
 printMessage msg = asks messageRow >>= printAtRow msg

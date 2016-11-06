@@ -78,6 +78,8 @@ startPlaying = do
       c <- liftIO getChar
       dispatch c
       loop
+    dispatch (ctrl -> 'a') = beginningOfWord
+    dispatch (ctrl -> 'e') = endOfWord
     dispatch (ctrl -> 'n') = moveDown
     dispatch (ctrl -> 'p') = moveUp
     dispatch (ctrl -> 'b') = moveLeft
@@ -134,21 +136,47 @@ setDirection dir = modify $ \s -> s { playerDirection = dir }
 setPosition :: (Game m) => (Int, Int) -> m ()
 setPosition pos = modify $ \s -> s { playerPosition = pos }
 
-move :: (Game m) => (Int, Int) -> m ()
-move (dx, dy) = do
+move :: (Game m) => Bool -> (Int, Int) -> m (Int, Int)
+move skipBlocks (dx, dy) = do
   (x, y) <- gets playerPosition
   mcell <- getCellM (x + dx, y + dy)
   case mcell of
-   Nothing -> return ()
-   Just Blocked -> move (dx + signum dx, dy + signum dy)
-   Just _ -> setPosition (x + dx, y + dy)
+   Nothing -> return (x, y)
+   Just Blocked -> if skipBlocks
+                   then move skipBlocks (dx + signum dx, dy + signum dy)
+                   else return (x, y)
+   Just _ -> do let npos = (x + dx, y + dy)
+                setPosition npos
+                return npos
+   
+
+move_ :: (Game m) => Bool -> (Int, Int)  -> m ()
+move_ = curry (void . uncurry move)
 
 moveDown, moveUp, moveLeft, moveRight :: (Game m) => m ()
-moveDown = printMessage "MOVE DOWN" >> move (0, 1)
-moveUp = printMessage "MOVE UP" >> move (0, -1)
-moveLeft = printMessage "MOVE LEFT" >> move (-1, 0)
-moveRight = printMessage "MOVE RIGHT" >> move (1, 0)
+moveDown = printMessage "MOVE DOWN" >> move_ True (0, 1)
+moveUp = printMessage "MOVE UP" >> move_ True (0, -1)
+moveLeft = printMessage "MOVE LEFT" >> move_ True (-1, 0)
+moveRight = printMessage "MOVE RIGHT" >> move_ True (1, 0)
 
+moveToWordBoundary :: (Game m) => (Int, Int) -> m ()
+moveToWordBoundary dvec = do
+  pos <- gets playerPosition
+  npos <- move False dvec
+  if pos == npos
+    then return ()
+    else moveToWordBoundary dvec
+
+beginningOfWord :: (Game m) => m ()
+beginningOfWord = do
+  printMessage "JUMP TO HEAD"
+  backwardVector >>= moveToWordBoundary
+
+endOfWord :: (Game m) => m ()
+endOfWord = do
+  printMessage "JUMP TO END"
+  forwardVector >>= moveToWordBoundary
+  
 backwardVector :: (Game m) => m (Int, Int)
 backwardVector = do
   GameState{..} <- get
@@ -164,10 +192,10 @@ forwardVector = do
    Down -> return (0, 1)
 
 moveBack :: (Game m) => m ()
-moveBack = backwardVector >>= move
+moveBack = backwardVector >>= move_ True
 
 moveForward :: (Game m) => m ()
-moveForward = forwardVector >>= move
+moveForward = forwardVector >>= move_ True
 
 blankCurrentCell :: (Game m) => m ()
 blankCurrentCell = get >>= \GameState{..} -> setCellM playerPosition Empty

@@ -75,11 +75,8 @@ backVec Down = (0, -1)
 sumCoords :: (Int, Int) -> (Int, Int) -> (Int, Int)
 sumCoords (x, y) (x', y') = (x+x', y+y')
 
-cellAt :: (Int, Int) -> Board -> Maybe Cell
-cellAt (x, y) Board{rows} = rows !? y >>= (!? x)
-
 isBlack :: (Int, Int) -> Board -> Bool
-isBlack pos@(x, y) = maybe True (== Blocked) . cellAt pos
+isBlack pos@(x, y) = maybe True (== Blocked) . getCell pos
 
 isWhite :: (Int, Int) -> Board -> Bool
 isWhite = curry (not . uncurry isBlack)
