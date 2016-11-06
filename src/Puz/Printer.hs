@@ -23,9 +23,6 @@ setBackground color = liftIO $ setSGR [SetColor Background Dull color]
 setIntensity :: (MonadIO m) => ConsoleIntensity -> m ()
 setIntensity intensity = liftIO $ setSGR [SetConsoleIntensity intensity]
 
-printBright :: (MonadIO m) => String -> m ()
-printBright = printColor colorOpts{foregroundColor=Black,backgroundColor=Cyan}
-
 printSolution :: (Game m) => m ()
 printSolution = do
   Puzzle{solution} <- ask
@@ -36,15 +33,6 @@ printPlayerBoard = do
   GameState{playerPosition, currentBoard} <- get
   printBoard (Just playerPosition) False currentBoard
 
-printCurrent :: (MonadIO m) => String -> m ()
-printCurrent = printColor colorOpts{backgroundColor=Yellow,foregroundColor=Black}
-
-printFilled :: (MonadIO m) => String -> m ()
-printFilled = printColor colorOpts{consoleIntensity=BoldIntensity}
-
-printWhite :: (MonadIO m) => String -> m ()
-printWhite = printColor colorOpts{foregroundColor=Black,backgroundColor=White,consoleIntensity=BoldIntensity}
-
 data ColorOpts = ColorOpts { foregroundColor :: !Color
                            , backgroundColor :: !Color
                            , colorIntensity :: !ColorIntensity
@@ -52,12 +40,12 @@ data ColorOpts = ColorOpts { foregroundColor :: !Color
                            }
                deriving (Show)
 
-colorOpts :: ColorOpts
-colorOpts = ColorOpts { foregroundColor = White
-                      , backgroundColor = Black
-                      , colorIntensity = Dull
-                      , consoleIntensity = NormalIntensity
-                      }
+defaultColors :: ColorOpts
+defaultColors = ColorOpts { foregroundColor = White
+                          , backgroundColor = Black
+                          , colorIntensity = Dull
+                          , consoleIntensity = NormalIntensity
+                          }
 
 printColor :: (MonadIO m) => ColorOpts -> String -> m ()
 printColor ColorOpts{..} str = do
@@ -68,6 +56,27 @@ printColor ColorOpts{..} str = do
            ]
     putStr str
   reset
+
+brightColors, playerColors, filledColors, whiteBgColors :: ColorOpts
+brightColors = defaultColors { foregroundColor = Black, backgroundColor = Cyan }
+playerColors = defaultColors { backgroundColor = Yellow, foregroundColor = Black }
+filledColors = defaultColors { consoleIntensity = BoldIntensity }
+whiteBgColors = defaultColors { foregroundColor = Black
+                              , backgroundColor = White
+                              , consoleIntensity = BoldIntensity
+                              }
+
+printBright :: (MonadIO m) => String -> m ()
+printBright = printColor brightColors
+
+printCurrent :: (MonadIO m) => String -> m ()
+printCurrent = printColor playerColors
+
+printFilled :: (MonadIO m) => String -> m ()
+printFilled = printColor filledColors
+
+printWhite :: (MonadIO m) => String -> m ()
+printWhite = printColor whiteBgColors
 
 printAtRow :: (MonadIO m) => String -> Int -> m ()
 printAtRow msg row = liftIO $ do
@@ -84,7 +93,7 @@ printClue Clue{..} = asks clueRow >>= printAtRow clueStr
   where
     clueStr = show number ++ " " ++ show direction ++ ": " ++ text
 
-printBoard :: (Game m) => Maybe (Int, Int) -> Bool -> Board -> m ()
+printBoard :: forall m. (Game m) => Maybe (Int, Int) -> Bool -> Board -> m ()
 printBoard mCoords showClues Board{rows, width} = do
   printBorder
   mapM_ printRow (V.toList rows `zip` [0..])
@@ -93,14 +102,17 @@ printBoard mCoords showClues Board{rows, width} = do
     printDashes = replicateM_ (4*width-1) (printBright "-")
     printRow (row, y) = printBright "|" >> mapM_ printCell rowWithCoords >> endl >> printBorder
       where rowWithCoords = V.toList row `zip` ([0..] `zip` repeat y)
+    printCell :: (Cell, (Int, Int)) -> m ()
     printCell (Blocked, _) = prn "   " >> printBright "|"
     printCell (Empty, coords) = do
       let p = if isPlayerCoords coords then printCurrent else printWhite
       printClueOrContent coords p "   "
       printBright "|"
     printCell (Filled ch, coords) = do
-      let p = if isPlayerCoords coords then printCurrent else printWhite
-      printClueOrContent coords p [' ', ch, ' ']
+      let baseColors = if isPlayerCoords coords then playerColors else whiteBgColors
+      drawError <- shouldDrawError ch coords
+      let colors = baseColors { foregroundColor = if drawError then Red else Black }
+      printClueOrContent coords (printColor colors) [' ', ch, ' ']
       printBright "|"
     isPlayerCoords c = maybe False (== c) mCoords
     printClueOrContent coords pfn content = do
@@ -112,6 +124,14 @@ printBoard mCoords showClues Board{rows, width} = do
     prn = liftIO . putStr
     endl = liftIO $ putStrLn ""
     prnCol c s = setColor c >> prn s >> reset
+    shouldDrawError :: Char -> (Int, Int) -> m Bool
+    shouldDrawError ch coords = do
+      showErrs <- gets shouldShowErrors
+      if showErrs
+        then do Puzzle{..} <- ask
+                let mSolCh = getCell coords solution >>= cellChar
+                return $ maybe False (/= ch) mSolCh
+        else return False
 
 showClueNumbers :: (Game m) => m ()
 showClueNumbers = do

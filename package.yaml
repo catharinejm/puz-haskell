@@ -21,6 +21,8 @@ default-extensions:
   - NamedFieldPuns
   - FlexibleContexts
   - ViewPatterns
+  - ScopedTypeVariables
+
 
 dependencies:
   - ansi-terminal

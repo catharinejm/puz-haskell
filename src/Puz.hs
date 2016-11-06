@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Puz
     ( module Puz.Prelude
     , module Puz
@@ -86,6 +84,7 @@ startPlaying = do
     dispatch (ctrl -> 'f') = moveRight
     dispatch (ctrl -> 'd') = blankCurrentCell
     dispatch (ctrl -> 'w') = jumpToClue
+    dispatch (ctrl -> 'y') = showErrors
     dispatch ' ' = toggleDirection
     dispatch c@(isLetter -> True) = fillCurrentCell (Just c)
     dispatch '\DEL' = fillCurrentCell Nothing
@@ -209,6 +208,10 @@ fillCurrentCell mchr = do
                Empty -> getPreviousCoords >>= (`setCellM` Empty) >> moveBack
                Filled _ -> setCellM playerPosition Empty
    Just c -> setCellM playerPosition (Filled $ toUpper c) >> moveForward
+
+showErrors :: (Game m) => m ()
+showErrors = do
+  modify $ \s@GameState{..} -> s { shouldShowErrors = not shouldShowErrors }
 
 shutdown :: (MonadIO m) => m ()
 shutdown = liftIO (putStrLn "Good bye!" >> exitSuccess)

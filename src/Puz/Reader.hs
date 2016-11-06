@@ -7,7 +7,6 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as CS
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Map.Strict as M
-import           Data.Vector ((!?))
 import qualified Data.Vector as V
 import           Puz.Prelude
 import           Puz.Types

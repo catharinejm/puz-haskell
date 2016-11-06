@@ -52,6 +52,10 @@ printNotNull = (uncurry when . (not . null &&& liftIO . putStrLn) =<<) . asks
 pf :: (Puzzle -> a) -> (Puzzle -> a)
 pf = id
 
+cellChar :: Cell -> Maybe Char
+cellChar (Filled c) = Just c
+cellChar _ = Nothing
+
 getCell :: (Int, Int) -> Board -> Maybe Cell
 getCell (x, y) Board{rows} = rows !? y >>= (!? x)
 
