@@ -80,7 +80,7 @@ sumCoords :: (Int, Int) -> (Int, Int) -> (Int, Int)
 sumCoords (x, y) (x', y') = (x+x', y+y')
 
 isBlack :: (Int, Int) -> Board -> Bool
-isBlack pos@(x, y) = maybe True (== Blocked) . getCell pos
+isBlack pos = maybe True (== Blocked) . getCell pos
 
 isWhite :: (Int, Int) -> Board -> Bool
 isWhite = curry (not . uncurry isBlack)

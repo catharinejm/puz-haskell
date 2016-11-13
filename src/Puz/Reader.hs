@@ -42,7 +42,7 @@ mkPuzzle PuzResult{..} = do
                    , messageRow = (fromIntegral height * 2 + 2)
                    , clueRow = (fromIntegral height * 2 + 3)
                    }
-      gameState = GameState bd (0, 0) Across False
+      gameState = mkGameState bd
   return (puz, gameState)
   where
     brd = mkBoardM (fromIntegral width) (fromIntegral height)
@@ -78,7 +78,7 @@ newCB = CB [] 1
 
 mkClues :: (MonadError PuzError m) => [ByteString] -> Board -> m [Clue]
 mkClues texts board@Board{..} = let CB{..} = buildClues
-                          in return clues
+                                in return clues
   where
     needsAcrossNum x y = isWhite (x, y) board && isBlack (x-1, y) board && isWhite (x+1, y) board
     needsDownNum x y = isWhite (x, y) board && isBlack (x, y-1) board && isWhite (x, y+1) board

@@ -62,6 +62,7 @@ runGame = do
 
 startPlaying :: forall m. (Game m) => m ()
 startPlaying = do
+  modify $ \s -> s { shouldShowRepl = False }
   liftIO $ hSetBuffering stdin NoBuffering
   echoOff
   liftIO clearScreen
@@ -75,7 +76,10 @@ startPlaying = do
       liftIO $ hFlush stdout
       c <- liftIO getChar
       dispatch c
-      loop
+      showRepl <- gets shouldShowRepl
+      if showRepl
+        then return ()
+        else loop
     dispatch (ctrl -> 'a') = beginningOfWord
     dispatch (ctrl -> 'e') = endOfWord
     dispatch (ctrl -> 'n') = moveDown
@@ -91,6 +95,7 @@ startPlaying = do
     dispatch '\ESC' = do
       c <- liftIO getChar
       case c of
+       'x' -> repl
        '[' -> do
          c' <- liftIO getChar
          case c' of
@@ -109,6 +114,12 @@ startPlaying = do
     getNum digits = liftIO getChar >>= \c -> case c of
                                               '~' -> return (reverse digits)
                                               n -> getNum (n:digits)
+    repl = do
+      liftIO $ hSetBuffering stdin LineBuffering
+      modify $ \s -> s { shouldShowRepl = True }
+      echoOn
+      liftIO clearScreen
+      resetScreen
     toggleDirection = do
       GameState{playerDirection} <- get
       let dir = case playerDirection of

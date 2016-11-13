@@ -158,8 +158,12 @@ data GameState = GameState { currentBoard :: !Board
                            , playerPosition :: !(Int, Int)
                            , playerDirection :: Direction
                            , shouldShowErrors :: !Bool
+                           , shouldShowRepl :: !Bool
                            }
                deriving (Show)
+
+mkGameState :: Board -> GameState
+mkGameState board = GameState board (0, 0) Across False True
 
 newtype PuzError = PuzError String
 
