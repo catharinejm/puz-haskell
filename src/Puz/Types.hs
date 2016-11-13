@@ -154,16 +154,21 @@ data Cell = Blocked
           | Filled !Char
           deriving (Show, Eq)
 
+data GameMode = Console
+              | Play
+              | Quit
+              deriving (Show)
+
 data GameState = GameState { currentBoard :: !Board
                            , playerPosition :: !(Int, Int)
                            , playerDirection :: Direction
                            , shouldShowErrors :: !Bool
-                           , shouldShowRepl :: !Bool
+                           , currentMode :: !GameMode
                            }
                deriving (Show)
 
 mkGameState :: Board -> GameState
-mkGameState board = GameState board (0, 0) Across False True
+mkGameState board = GameState board (0, 0) Across False Console
 
 newtype PuzError = PuzError String
 

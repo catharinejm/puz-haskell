@@ -20,6 +20,46 @@ loadGame puzFile = do
   runChecksums puz bs
   mkPuzzle puz
 
+prompt :: (MonadIO m) => m ()
+prompt = liftIO $ do
+  putStr "> "
+  hFlush stdout
+
+repl :: (Game m) => m ()
+repl = do
+  prompt
+  cmd <- liftIO getLine >>= return . map toLower
+  runCommand cmd
+
+runCommand :: (Game m) => String -> m ()
+runCommand "quit" = quit
+runCommand "exit" = quit
+runCommand "help" = do
+  liftIO . putStrLn . unlines $ [ "Commands:"
+                                , "  board - Display the board"
+                                , "  solution - Display the solution"
+                                , "  clues - Display the clues"
+                                , "  play - Play the crossword!"
+                                ]
+runCommand "board" = printPlayerBoard
+runCommand "solution" = printSolution
+runCommand "clues" = do
+  clues <- asks (clues :: Puzzle -> [Clue])
+  liftIO . putStrLn . unlines $ clueStrs clues
+  where
+    clueStrs = map cs . sortBy (compare `on` ((,) <$> direction <*> number))
+    cs Clue{..} = show number ++ " " ++ show direction ++ ": " ++ text
+runCommand "play" = play
+runCommand s = liftIO (putStrLn $ s ++ "?? Wut?")
+
+setMode :: (Game m) => GameMode -> m ()
+setMode mode = modify $ \s -> s { currentMode = mode }
+
+quit, play, console :: (Game m) => m ()
+quit = setMode Quit
+play = setMode Play
+console = setMode Console
+
 runGame :: (Game m) => m ()
 runGame = do
   liftIO $ do
@@ -32,43 +72,23 @@ runGame = do
   liftIO $ do
     putStrLn "Type 'help' for more info."
     putStrLn ""
-  repl
-  where
-    repl = do
-      liftIO $ do
-        putStr "> "
-        hFlush stdout
-      cmd <- liftIO getLine >>= return . map toLower
-      if cmd `elem` ["quit", "exit"]
-        then return ()
-        else dispatch cmd >> repl
-    dispatch "help" =
-      liftIO . putStrLn . unlines $ [ "Commands:"
-                                    , "  board - Display the board"
-                                    , "  solution - Display the solution"
-                                    , "  clues - Display the clues"
-                                    , "  play - Play the crossword!"
-                                    ]
-    dispatch "board" = printPlayerBoard
-    dispatch "solution" = printSolution
-    dispatch "clues" = do
-      clues <- asks (clues :: Puzzle -> [Clue])
-      liftIO . putStrLn . unlines $ clueStrs clues
-      where
-        clueStrs = map cs . sortBy (compare `on` ((,) <$> direction <*> number))
-        cs Clue{..} = show number ++ " " ++ show direction ++ ": " ++ text
-    dispatch "play" = startPlaying
-    dispatch s = liftIO . putStrLn $ s ++ "?? Wut?"
-
-startPlaying :: forall m. (Game m) => m ()
-startPlaying = do
-  modify $ \s -> s { shouldShowRepl = False }
-  liftIO $ hSetBuffering stdin NoBuffering
-  echoOff
-  liftIO clearScreen
   loop
   where
     loop = do
+      mode <- gets currentMode
+      case mode of
+       Console -> repl >> loop
+       Play -> startPlaying >> loop
+       Quit -> return ()
+
+startPlaying :: forall m. (Game m) => m ()
+startPlaying = do
+  liftIO $ hSetBuffering stdin NoBuffering
+  echoOff
+  liftIO clearScreen
+  step
+  where
+    step = do
       resetScreen
       printPlayerBoard
       printDirection
@@ -76,10 +96,6 @@ startPlaying = do
       liftIO $ hFlush stdout
       c <- liftIO getChar
       dispatch c
-      showRepl <- gets shouldShowRepl
-      if showRepl
-        then return ()
-        else loop
     dispatch (ctrl -> 'a') = beginningOfWord
     dispatch (ctrl -> 'e') = endOfWord
     dispatch (ctrl -> 'n') = moveDown
@@ -116,10 +132,10 @@ startPlaying = do
                                               n -> getNum (n:digits)
     repl = do
       liftIO $ hSetBuffering stdin LineBuffering
-      modify $ \s -> s { shouldShowRepl = True }
       echoOn
       liftIO clearScreen
       resetScreen
+      console
     toggleDirection = do
       GameState{playerDirection} <- get
       let dir = case playerDirection of
