@@ -110,3 +110,6 @@ setCell (x, y) cell board@Board{rows} =
 setCellM :: (MonadState GameState m) => (Int, Int) -> Cell -> m ()
 setCellM coords cell = do
   modify $ \s@GameState{currentBoard} -> s { currentBoard = setCell coords cell currentBoard }
+
+setMode :: (Game m) => GameMode -> m ()
+setMode mode = modify $ \s -> s { currentMode = mode }
